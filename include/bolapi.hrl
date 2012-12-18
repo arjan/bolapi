@@ -16,7 +16,7 @@
           nrProducts = undefined,
           offset = undefined,
 
-          includeAttributes = undefined
+          includeAttributes = true
          }).
 
         
