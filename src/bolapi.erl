@@ -1,6 +1,12 @@
 -module(bolapi).
+-include_lib("bolapi/include/bolapi.hrl").
 
--export([ping/0, get_product/1]).
+-export([
+         ping/0,
+         get_product/1,
+         search/1
+        ]).
+
 
 -define(API_BASE, "https://openapi.bol.com").
 
@@ -14,6 +20,9 @@ ping() ->
 
 get_product(Id) ->
     request(get, "/openapi/services/rest/catalog/v3/products/" ++ z_convert:to_list(Id), []).
+
+search(#bolsearch{}) ->
+    {ok, []}.
 
 
 %% Do a GET request
