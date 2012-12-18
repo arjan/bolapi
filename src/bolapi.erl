@@ -90,7 +90,7 @@ interpret_body(Headers, Body) ->
 build_query_string([]) ->
     [];
 build_query_string(Params) ->
-    KVs = string:join([ http_uri:encode(z_convert:to_list(K)) ++ "=" ++ http_uri:encode(z_convert:to_list(V))
+    KVs = string:join([ z_url:percent_encode(z_convert:to_list(K)) ++ "=" ++ z_url:percent_encode(z_convert:to_list(V))
                         || {K, V} <- Params], "&"),
     "?" ++ KVs.
 
