@@ -5,25 +5,44 @@
 -define(API_BASE, "https://openapi.bol.com").
 
 ping() ->
-    request(get, "/openapi/services/rest/utils/v3/ping", []).
+    case request(get, "/openapi/services/rest/utils/v3/ping", []) of
+        {ok, []} ->
+            pong;
+        {error, R} ->
+            {error, R}
+    end.
 
 get_product(Id) ->
     request(get, "/openapi/services/rest/catalog/v3/products/" ++ z_convert:to_list(Id), []).
 
 
+%% Do a GET request
 request(get, Path, Params) ->
     Date = make_date(), 
     {Key, Sec} = get_access_key(),
     ContentType = "application/xml",
     
-    AuthHeader = auth_header(Key, Sec, Path, ContentType, Date, Params),
-
     Headers = [{"Content-type", ContentType},
-               {"X-OpenAPI-Authorization", AuthHeader},
+               {"X-OpenAPI-Authorization", auth_header(Key, Sec, Path, ContentType, Date, Params)},
                {"X-OpenAPI-Date", Date}],
     
-    httpc:request(get,
-                  {?API_BASE ++ Path, Headers}, [], []).
+    case httpc:request(get, {?API_BASE ++ Path, Headers}, [], []) of
+        {ok, {{_, 200, _}, ResponseHeaders, Body}} ->
+            {ok, interpret_body(ResponseHeaders, Body)};
+        {ok, {{_, OtherCode, _}, ResponseHeaders, Body}} ->
+            {error,
+             {http, OtherCode, interpret_body(ResponseHeaders, Body)}};
+        {error, R} ->
+            {error, R}
+    end.
+
+interpret_body(Headers, Body) ->
+    case proplists:get_value("content-type", [{z_string:to_lower(K), V} || {K,V} <- Headers]) of
+        "application/xml" ->
+            {XML, _} = xmerl_scan:string(Body), XML;
+        "text/plain" ++ _ ->
+            Body
+    end.
 
 
 %% Construct the authorization header, calculates the signature needed.

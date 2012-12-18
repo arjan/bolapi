@@ -8,12 +8,10 @@ api_test() ->
     ok = application:start(inets),
     ok = application:start(public_key),
     ok = application:start(ssl),
-    bolapi:ping(),
-
-    X = bolapi:get_product("1002004000092913"),
-    io:format("~p", [X]),
-    1=2.
-   
+    pong = bolapi:ping(),
+    {ok, XML} = bolapi:get_product("1002004000092913"),
+    xmlElement = element(1, XML),
+    ok.
 
 
 
