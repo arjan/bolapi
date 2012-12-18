@@ -1,11 +1,22 @@
--record(bolsearch, {
-          term = <<>>,
-          categoryId = 0,
-          offset = 0,
-          nrProducts = 30,
-          includeProducts = true,
-          includeCategories = true,
-          includeRefinements = false
+-record(bolparams, {
+
+          %% specific for searchresults
+          term = undefined,
+          categoryId = undefined,
+
+          %% generic
+          
+          includeProducts = undefined,
+          includeCategories = undefined,
+          includeRefinements = undefined,
+
+          sortingMethod = undefined,
+          sortAscending = undefined,
+
+          nrProducts = undefined,
+          offset = undefined,
+
+          includeAttributes = undefined
          }).
 
         

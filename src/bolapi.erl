@@ -3,13 +3,14 @@
 
 -export([
          ping/0,
-         get_product/1,
-         search/1
+         products/1,
+         searchresults/1,
+         listresults/2
         ]).
-
 
 -define(API_BASE, "https://openapi.bol.com").
 
+%% @doc Test the API connection
 ping() ->
     case request(get, "/openapi/services/rest/utils/v3/ping", []) of
         {ok, []} ->
@@ -18,11 +19,39 @@ ping() ->
             {error, R}
     end.
 
-get_product(Id) ->
+%% @doc Return details of a single product.
+products(Id) ->
     request(get, "/openapi/services/rest/catalog/v3/products/" ++ z_convert:to_list(Id), []).
 
-search(#bolsearch{}) ->
-    {ok, []}.
+%% @doc Execute a search query
+searchresults(P=#bolparams{}) ->
+    request(get, "/openapi/services/rest/catalog/v3/searchresults", filter_params(P)).
+
+%% @doc Product list
+listresults(Type, CategoryIds) ->
+    listresults(Type, CategoryIds, #bolparams{}).
+
+listresults(Type, CategoryIds, BolParams) when
+      Type =:= toplist_default;
+      Type =:= toplist_overall;
+      Type =:= toplist_last_week;
+      Type =:= toplist_last_two_months;
+      Type =:= new;
+      Type =:= preorder
+      ->
+    CatIds = string:join(lists:map(fun z_convert:to_list/1, CategoryIds), "+"),
+    Path = "/openapi/services/rest/catalog/v3/listresults/" ++ z_convert:to_list(Type) ++ "/" ++ CatIds,
+    request(get, Path, filter_params(BolParams)).
+
+
+%% Private
+
+filter_params(P=#bolparams{}) ->
+    All = lists:zip(
+            record_info(fields, bolparams),
+            tl(tuple_to_list(P))),
+    [{K, V} || {K, V} <- All,
+               V =/= undefined].
 
 
 %% Do a GET request
@@ -34,8 +63,9 @@ request(get, Path, Params) ->
     Headers = [{"Content-type", ContentType},
                {"X-OpenAPI-Authorization", auth_header(Key, Sec, Path, ContentType, Date, Params)},
                {"X-OpenAPI-Date", Date}],
-    
-    case httpc:request(get, {?API_BASE ++ Path, Headers}, [], []) of
+
+    QueryString = build_query_string(Params),
+    case httpc:request(get, {?API_BASE ++ Path ++ QueryString, Headers}, [], []) of
         {ok, {{_, 200, _}, ResponseHeaders, Body}} ->
             {ok, interpret_body(ResponseHeaders, Body)};
         {ok, {{_, OtherCode, _}, ResponseHeaders, Body}} ->
@@ -49,10 +79,20 @@ interpret_body(Headers, Body) ->
     case proplists:get_value("content-type", [{z_string:to_lower(K), V} || {K,V} <- Headers]) of
         "application/xml" ->
             {XML, _} = xmerl_scan:string(Body), XML;
+        "text/xml" ++ _ ->
+            io:format("~p", [Body]),
+            {XML, _} = xmerl_scan:string(Body), XML;
         "text/plain" ++ _ ->
             Body
     end.
 
+%% Given a KV list of parameters, make the query string
+build_query_string([]) ->
+    [];
+build_query_string(Params) ->
+    KVs = string:join([ http_uri:encode(z_convert:to_list(K)) ++ "=" ++ http_uri:encode(z_convert:to_list(V))
+                        || {K, V} <- Params], "&"),
+    "?" ++ KVs.
 
 %% Construct the authorization header, calculates the signature needed.
 auth_header(Key, Sec, Path, ContentType, Date, Params) ->
@@ -64,8 +104,9 @@ auth_header(Key, Sec, Path, ContentType, Date, Params) ->
     ParamBase = lists:foldl(fun({K, V}, Acc) ->
                                     Acc ++
                                         case Acc of [] -> []; _ -> "\n" end ++
-                                        z_convert:to_list(K) ++
                                         "&" ++
+                                        z_convert:to_list(K) ++
+                                        "=" ++
                                         z_convert:to_list(V)
                             end,
                             [],
