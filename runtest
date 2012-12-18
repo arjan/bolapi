@@ -1,0 +1,1 @@
+ERL_FLAGS="-config ../bolapi.config -pa ebin -pa deps/*/ebin" rebar skip_deps=true compile eunit
