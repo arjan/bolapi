@@ -77,13 +77,16 @@ request(get, Path, Params) ->
 
 interpret_body(Headers, Body) ->
     case proplists:get_value("content-type", [{z_string:to_lower(K), V} || {K,V} <- Headers]) of
-        "application/xml" ->
+        "application/xml" ++ _ ->
             {XML, _} = xmerl_scan:string(Body), XML;
         "text/xml" ++ _ ->
             io:format("~p", [Body]),
             {XML, _} = xmerl_scan:string(Body), XML;
         "text/plain" ++ _ ->
-            Body
+            Body;
+        undefined ->
+            %% No content type? "ping" request.
+            []
     end.
 
 %% Given a KV list of parameters, make the query string
