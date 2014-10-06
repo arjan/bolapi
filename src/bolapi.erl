@@ -76,7 +76,7 @@ request(get, Path, Params) ->
     end.
 
 interpret_body(Headers, Body) ->
-    case proplists:get_value("content-type", [{z_string:to_lower(K), V} || {K,V} <- Headers]) of
+    case proplists:get_value(<<"content-type">>, [{z_string:to_lower(K), V} || {K,V} <- Headers]) of
         "application/xml" ++ _ ->
             {XML, _} = xmerl_scan:string(Body), XML;
         "text/xml" ++ _ ->
